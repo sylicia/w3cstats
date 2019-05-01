@@ -1,0 +1,82 @@
+#! /usr/bin/env python3
+
+from pygtail import Pygtail
+import logging
+import sys
+import time
+from datetime import datetime
+import w3cstats
+
+#LOG_LEVEL='DEBUG'
+LOG_LEVEL='INFO'
+
+logger = logging.getLogger(__name__)
+logger.setLevel(getattr(logging, LOG_LEVEL))
+logging.basicConfig(format='[%(levelname)s] %(message)s')
+w3cstats.logger.setLevel(getattr(logging, LOG_LEVEL))
+
+FILE_NAME="/tmp/access.log"
+
+def get_ranking(sections, metric):
+    metric_extract = {}
+    for section in sections:
+        metric_extract[section] = getattr(sections[section], metric)
+    ranking = sorted(metric_extract.items(), reverse=True, key=lambda x: x[1])
+
+    return (ranking)
+    print("Top {}".format(metric))
+
+def display_summary(sections, date_time):
+    print('--- Summary from {}'.format(date_time.strftime("%Y-%m-%d %H:%M:%S")))
+
+    print("Top hits")
+    ranking = get_ranking(sections, 'hits')
+    hits_cpt = 0
+    for (key, value) in ranking:
+        print(" - {} : {}".format(key, value))
+        hits_cpt += 1
+        if  hits_cpt == 10:
+            break
+
+    ranking = get_ranking(sections, 'error_rate')
+    err_found = 0
+    for (section, err_perc) in ranking:
+        if err_perc > 0:
+            err_found = 1
+    if err_found == 0 :
+        print("Top errors: No error detected ;)")
+    else:
+        print("Top errors")
+        for (section, err_perc) in ranking:
+            if err_perc > 0:
+                print(" - {} : {:.2f}%".format(key, err_perc))
+            hits_cpt += 1
+            if  hits_cpt == 10:
+                break
+
+
+if __name__ == '__main__':
+    # while True:
+        logger.debug("Read")
+        start_time = None
+        sections = {}
+        try:
+            for log_line in Pygtail(FILE_NAME):
+                logger.debug("--- Start Read ---")
+                log_parsed = w3cstats.parse_log(log_line)
+
+                if not start_time:
+                    start_time = log_parsed['time_period']
+                if log_parsed['time_period'] > start_time:
+                    display_summary(sections, start_time)
+                    start_time = log_parsed['time_period']
+                    logger.debug("Clean history")
+                    sections = {}
+                w3cstats.register_log(sections, log_parsed)
+                logger.debug(" -- End Read ---")
+
+
+        except FileNotFoundError as error:
+            logger.critical(error)
+            exit(1)
+        # time.sleep(1)
