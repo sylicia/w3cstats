@@ -46,7 +46,7 @@ W3C_TIME_FORMAT = "%d/%b/%Y:%H:%M:%S %z"
 #   Functions
 #
 
-def to_period(time_string):
+def to_period_stats(time_string):
     """Convert a date into a timestamp related a period.
     Periods are defined every 10 seconds from 0.
 
@@ -63,20 +63,24 @@ def parse_log(log_line):
     :param str log_line: W3C line to parse
     :return: Dict with useful fields
     """
-    logger.debug(log_line[0:-1])
+    logger.debug("Line: {}".format(log_line[0:-1]))
     match = parser.search(log_line)
+    if not match:
+        if len(log_line) > 0:
+            logger.warning("Invalid Line: {}".format(log_line[0:-1]))
+            return(None)
     result = {
             'host': match.group('host'),
             'section': match.group('section') ,
             'status': int(match.group('status')) ,
             'size': float(match.group('size')),
-            'time_period': to_period(match.group('time'))
+            'time_period': to_period_stats(match.group('time'))
     }
     logger.debug(result)
     return (result)
 
 def register_log(sections, log_parsed):
-    logger.debug("Register: {}".format(log_parsed))
+    logger.info("Register: {}".format(log_parsed))
     if log_parsed['section'] not in sections:
         sections[log_parsed['section']] = LogStat(log_parsed['section'])
     sections[log_parsed['section']].add_hit(
@@ -88,9 +92,8 @@ def register_log(sections, log_parsed):
 #
 #   Class
 #
-
 class LogStat(object):
-    """Initialize statistics based on logs
+    """Initialize statistics based on logs for 10 seconds
 
     :param str section: Section URI
     """
