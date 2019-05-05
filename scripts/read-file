@@ -21,9 +21,7 @@ import time
 from datetime import datetime
 import w3cstats
 
-# LOG_LEVEL='DEBUG'
-LOG_LEVEL='INFO'
-#LOG_LEVEL='WARNING'
+LOG_LEVEL='WARNING'
 
 logger = logging.getLogger(__name__)
 logger.setLevel(getattr(logging, LOG_LEVEL))
