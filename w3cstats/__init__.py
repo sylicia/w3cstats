@@ -100,6 +100,11 @@ def parse_log(log_line):
     return (result)
 
 def register_log(sections, log_parsed):
+    """Register the log parsed
+
+    :param dict sections: Sections list
+    :param dict log_parsed: Log parsed
+    """
     logger.info("Register: {}".format(log_parsed))
     if log_parsed['section'] not in sections:
         sections[log_parsed['section']] = LogStat(log_parsed['section'])
@@ -113,7 +118,7 @@ def register_log(sections, log_parsed):
 #   Class
 #
 class Alerts(object):
-    """Initialize statistics based on logs for alerting
+    """Statistics based on logs and alerting
 
     :param str section: Section URI
     """
@@ -153,7 +158,7 @@ class Alerts(object):
         return(self.in_alert)
 
 class LogStat(object):
-    """Initialize statistics based on logs for 10 seconds
+    """Statistics based on logs for 10 seconds
 
     :param str section: Section URI
     """
