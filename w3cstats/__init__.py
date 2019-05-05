@@ -57,6 +57,26 @@ def to_period_stats(time_string):
     to_sub = int(str(int(date_time.timestamp()))[-1])
     return (date_time - timedelta(seconds=to_sub))
 
+def to_period_alert(time_string):
+    """Convert a date into a timestamp related a period.
+    Periods are defined every 10 seconds from 0.
+
+    :param str time_string: Time in W3C format
+    :return: The related period as datetime
+    """
+    sec_to_sub = 0
+    min_to_sub = 0
+
+    if time_string.second != 0:
+        sec_to_sub = time_string.second
+    if time_string.minute%2 != 0:
+        min_to_sub = 1
+
+    date_time = time_string - timedelta(minutes=min_to_sub, seconds=sec_to_sub)
+    logger.info("Period for alerting: {}".format(date_time))
+    return(date_time)
+
+
 def parse_log(log_line):
     """Parse a log line and extract interesting sections
 
@@ -92,6 +112,45 @@ def register_log(sections, log_parsed):
 #
 #   Class
 #
+class Alerts(object):
+    """Initialize statistics based on logs for alerting
+
+    :param str section: Section URI
+    """
+    def __init__(self, start_time, date_time):
+        """Init method"""
+        self.start_time = start_time
+        self.date_time = date_time
+        self.end_time = None
+        self.duration = None
+        self.average = None
+        self.sections = {}
+        self.hits = 0
+        self.in_alert = False
+
+    def add_section(self, section):
+        """Add a hit to statitics
+
+        :param LogStat section: Section statistics
+        """
+        self.hits += section.hits
+        if section.uri not in self.sections:
+            self.sections[section.uri] = section.hits
+        else:
+            self.sections[section.uri] += section.hits
+        logger.debug("Update alert {} : {}".format(self.date_time, self.hits))
+
+    def close(self, limit, curr_time):
+        logger.info("Close period: {}".format(self.date_time))
+        self.end_time = curr_time
+        self.duration = (self.end_time-self.start_time).total_seconds()
+        self.average = self.hits/self.duration
+        if self.average > limit:
+            print("ALERT at {} traffic average is high ({:.0f} hits/second)".format(self.date_time, self.average))
+            self.in_alert = True
+        else:
+            logger.info("No alert at {} traffic average is high ({:.0f} hits/second)".format(self.date_time, self.average))
+
 class LogStat(object):
     """Initialize statistics based on logs for 10 seconds
 
