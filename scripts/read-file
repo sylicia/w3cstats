@@ -18,17 +18,16 @@ from pygtail import Pygtail
 import logging
 import sys
 import time
-from datetime import datetime
 import w3cstats
 
-LOG_LEVEL='WARNING'
+LOG_LEVEL = 'WARNING'
+TOP_STATS = 10
 
 logger = logging.getLogger(__name__)
 logger.setLevel(getattr(logging, LOG_LEVEL))
 logging.basicConfig(format='[%(name)s %(levelname)s] %(message)s')
 w3cstats.logger.setLevel(getattr(logging, LOG_LEVEL))
 
-TOP_STATS=10
 
 def get_ranking(sections, metric):
     """Give the ranking of sections
@@ -43,6 +42,7 @@ def get_ranking(sections, metric):
     ranking = sorted(metric_extract.items(), reverse=True, key=lambda x: x[1])
     return (ranking)
 
+
 def sum_metric(sections, metric):
     """Sum the metric values of all sections
 
@@ -54,6 +54,7 @@ def sum_metric(sections, metric):
     for section in sections:
         result = getattr(sections[section], metric)
     return(result)
+
 
 def display_summary(sections, date_time):
     """Display the global summary for a period
@@ -75,7 +76,7 @@ def display_summary(sections, date_time):
     for (key, value) in ranking:
         print("|   - {} : {}".format(key, value))
         hits_cpt += 1
-        if  hits_cpt == TOP_STATS:
+        if hits_cpt == TOP_STATS:
             break
 
     ranking = get_ranking(sections, 'error_rate')
@@ -83,7 +84,7 @@ def display_summary(sections, date_time):
     for (section, err_perc) in ranking:
         if err_perc > 0:
             err_found = 1
-    if err_found == 0 :
+    if err_found == 0:
         print("| Top errors: No error detected ;)")
     else:
         print("| Top errors")
@@ -91,9 +92,10 @@ def display_summary(sections, date_time):
             if err_perc > 0:
                 print("|   - {} : {:.2f}%".format(key, err_perc))
             hits_cpt += 1
-            if  hits_cpt == TOP_STATS:
+            if hits_cpt == TOP_STATS:
                 break
     print('------------------------------------')
+
 
 def update_alerts(alerts, sections, curr_time, alert_number):
     """Update alerts:
@@ -106,31 +108,33 @@ def update_alerts(alerts, sections, curr_time, alert_number):
     :param datetime date_time: Start time of the period
     """
     alt_time = w3cstats.to_period_alert(curr_time)
-    alt_timestamp = alt_time.timestamp()
+    alt_tstp = alt_time.timestamp()
     in_alert = False
     alt_to_del = None
 
-    if alt_timestamp not in alerts:
+    if alt_tstp not in alerts:
         # Analize last period
         sorted_dates = sorted(alerts.keys())
         if len(alerts.keys()) >= 1:
-            last_timestamp = sorted(sorted_dates)[-1]
-            if last_timestamp < alt_timestamp:
-                in_alert = alerts[last_timestamp].close(alert_number, curr_time)
+            last_tstp = sorted(sorted_dates)[-1]
+            if last_tstp < alt_tstp:
+                in_alert = alerts[last_tstp].close(alert_number, curr_time)
                 if not in_alert:
                     logger.info("Find last alert")
                     for alt in alerts:
                         if alerts[alt].in_alert:
-                            print("Clear alert raised at {}".format(alerts[alt].date_time))
+                            print("Clear alert raised at {}".format(
+                                alerts[alt].date_time
+                            ))
                             alt_to_del = alt
                             break
                     if alt_to_del:
                         del(alerts[alt_to_del])
-                    del(alerts[last_timestamp])
+                    del(alerts[last_tstp])
         # Create new record
-        alerts[alt_timestamp] = w3cstats.Alerts(curr_time, alt_time)
+        alerts[alt_tstp] = w3cstats.Alerts(curr_time, alt_time)
     for section in sections:
-        alerts[alt_timestamp].add_section(sections[section])
+        alerts[alt_tstp].add_section(sections[section])
     logger.info(alerts)
 
 
@@ -154,7 +158,11 @@ if __name__ == '__main__':
                     continue
                 if not start_time:
                     start_time = log_parsed['time_period']
-                logger.info("Period: {} > {} = {}".format(log_parsed['time_period'], start_time, log_parsed['time_period'] > start_time))
+                logger.info("Period: {} > {} = {}".format(
+                    log_parsed['time_period'],
+                    start_time,
+                    log_parsed['time_period'] > start_time
+                ))
                 if log_parsed['time_period'] > start_time:
                     # Use the metrics
                     update_alerts(alerts, sections, start_time, alert_number)

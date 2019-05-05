@@ -18,7 +18,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, see <http://www.gnu.org/licenses/>.
 
-
 import logging
 import os
 import re
@@ -45,7 +44,6 @@ W3C_TIME_FORMAT = "%d/%b/%Y:%H:%M:%S %z"
 #
 #   Functions
 #
-
 def to_period_stats(time_string):
     """Convert a date into a timestamp related a period.
     Periods are defined every 10 seconds from 0.
@@ -56,6 +54,7 @@ def to_period_stats(time_string):
     date_time = datetime.strptime(time_string, W3C_TIME_FORMAT)
     to_sub = int(str(int(date_time.timestamp()))[-1])
     return (date_time - timedelta(seconds=to_sub))
+
 
 def to_period_alert(time_string):
     """Convert a date into a timestamp related a period.
@@ -69,7 +68,7 @@ def to_period_alert(time_string):
 
     if time_string.second != 0:
         sec_to_sub = time_string.second
-    if time_string.minute%2 != 0:
+    if time_string.minute % 2 != 0:
         min_to_sub = 1
 
     date_time = time_string - timedelta(minutes=min_to_sub, seconds=sec_to_sub)
@@ -91,13 +90,14 @@ def parse_log(log_line):
             return(None)
     result = {
             'host': match.group('host'),
-            'section': match.group('section') ,
-            'status': int(match.group('status')) ,
+            'section': match.group('section'),
+            'status': int(match.group('status')),
             'size': float(match.group('size')),
             'time_period': to_period_stats(match.group('time'))
     }
     logger.debug(result)
     return (result)
+
 
 def register_log(sections, log_parsed):
     """Register the log parsed
@@ -110,7 +110,7 @@ def register_log(sections, log_parsed):
         sections[log_parsed['section']] = LogStat(log_parsed['section'])
     sections[log_parsed['section']].add_hit(
         log_parsed['host'],
-        log_parsed['status'] ,
+        log_parsed['status'],
         log_parsed['size']
     )
 
@@ -151,11 +151,22 @@ class Alerts(object):
         self.duration = (self.end_time-self.start_time).total_seconds()
         self.average = self.hits/self.duration
         if self.average > limit:
-            print("ALERT at {} traffic average is high ({:.0f} hits/second)".format(self.date_time, self.average))
+            print(
+                "ALERT high traffic average at {} ({:.0f} hits/s)".format(
+                    self.date_time,
+                    self.average
+                )
+            )
             self.in_alert = True
         else:
-            logger.info("No alert at {} traffic average is high ({:.0f} hits/second)".format(self.date_time, self.average))
+            logger.info(
+                "No alert on traffic average at {} ({:.0f} hits/s)".format(
+                    self.date_time,
+                    self.average
+                )
+            )
         return(self.in_alert)
+
 
 class LogStat(object):
     """Statistics based on logs for 10 seconds
