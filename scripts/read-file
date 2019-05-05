@@ -33,6 +33,12 @@ w3cstats.logger.setLevel(getattr(logging, LOG_LEVEL))
 TOP_STATS=10
 
 def get_ranking(sections, metric):
+    """Give the ranking of sections
+
+    :param dict sections: Sections list
+    :param str metric: Name of the metric to calculate the ranking
+    :return: An ordered tuple with section and metric value
+    """
     metric_extract = {}
     for section in sections:
         metric_extract[section] = getattr(sections[section], metric)
@@ -40,12 +46,23 @@ def get_ranking(sections, metric):
     return (ranking)
 
 def sum_metric(sections, metric):
+    """Sum the metric values of all sections
+
+    :param dict sections: Sections list
+    :param str metric: Name of the metric to calculate the sum
+    :return: The sum of the values for this metric
+    """
     result = 0
     for section in sections:
         result = getattr(sections[section], metric)
     return(result)
 
 def display_summary(sections, date_time):
+    """Display the global summary for a period
+
+    :param dict sections: Sections list
+    :param datetime date_time: Start time of the period
+    """
     print('--- Summary: {}'.format(date_time.strftime("%Y-%m-%d %H:%M:%S")))
     logger.info(sections)
     print('| Global metrics:')
@@ -81,6 +98,15 @@ def display_summary(sections, date_time):
     print('------------------------------------')
 
 def update_alerts(alerts, sections, curr_time, alert_number):
+    """Update alerts:
+        - Create/Update/Close a period
+        - Raise an alert for a closed period if the traffic exceeds
+          the alert number
+        - Clear previous alert when the traffic is under the alert number
+
+    :param dict sections: Sections list
+    :param datetime date_time: Start time of the period
+    """
     alt_time = w3cstats.to_period_alert(curr_time)
     alt_timestamp = alt_time.timestamp()
     in_alert = False
