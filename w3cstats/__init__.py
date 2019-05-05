@@ -150,6 +150,7 @@ class Alerts(object):
             self.in_alert = True
         else:
             logger.info("No alert at {} traffic average is high ({:.0f} hits/second)".format(self.date_time, self.average))
+        return(self.in_alert)
 
 class LogStat(object):
     """Initialize statistics based on logs for 10 seconds
@@ -162,7 +163,7 @@ class LogStat(object):
         self.hits = 0
         self.status = {}
         self.host = {}
-        self.total_size = 0
+        self.size = 0
         self.min_size = 0
         self.max_size = 0
 
@@ -170,7 +171,7 @@ class LogStat(object):
         return("""{}: {} hits
   - total size: {}
   - total hits: {}\n  - hosts: {}
-  - status: {}""".format(self.uri, self.hits, self.total_size,
+  - status: {}""".format(self.uri, self.hits, self.size,
                          self.hits, self.host, self. status))
 
     def add_hit(self, host, status, size):
@@ -182,7 +183,7 @@ class LogStat(object):
         """
         self.hits += 1
 
-        self.total_size += size
+        self.size += size
         if size < self.min_size:
             self.min_size = size
         if size > self.max_size:

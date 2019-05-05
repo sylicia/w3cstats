@@ -25,15 +25,25 @@ def get_ranking(sections, metric):
     for section in sections:
         metric_extract[section] = getattr(sections[section], metric)
     ranking = sorted(metric_extract.items(), reverse=True, key=lambda x: x[1])
-
     return (ranking)
-    print("Top {}".format(metric))
+
+def sum_metric(sections, metric):
+    result = 0
+    for section in sections:
+        result = getattr(sections[section], metric)
+    return(result)
 
 def display_summary(sections, date_time):
-    print('--- Summary from {}'.format(date_time.strftime("%Y-%m-%d %H:%M:%S")))
+    print('--- Summary: {}'.format(date_time.strftime("%Y-%m-%d %H:%M:%S")))
     logger.info(sections)
-    print("| Top hits")
+    print('| Global metrics:')
+    for metric in ['hits', 'size']:
+        sum_result = sum_metric(sections, metric)
+        print('| -  {}: {} ({:.0f}/s)'.format(metric.capitalize(),
+                                              sum_result, sum_result/10))
+
     ranking = get_ranking(sections, 'hits')
+    print("| Top hits")
     hits_cpt = 0
     for (key, value) in ranking:
         print("|   - {} : {}".format(key, value))
@@ -61,17 +71,31 @@ def display_summary(sections, date_time):
 def update_alerts(alerts, sections, curr_time):
     alt_time = w3cstats.to_period_alert(curr_time)
     alt_timestamp = alt_time.timestamp()
+    in_alert = False
+    alt_to_del = None
+
     if alt_timestamp not in alerts:
         # Analize last period
         sorted_dates = sorted(alerts.keys())
         if len(alerts.keys()) >= 1:
             last_timestamp = sorted(sorted_dates)[-1]
             if last_timestamp < alt_timestamp:
-                alerts[last_timestamp].close(ALERT_LEVEL, curr_time)
+                in_alert = alerts[last_timestamp].close(ALERT_LEVEL, curr_time)
+                if not in_alert:
+                    logger.info("Find last alert")
+                    for alt in alerts:
+                        if alerts[alt].in_alert:
+                            print("Clear alert raised at {}".format(alerts[alt].date_time))
+                            alt_to_del = alt
+                            break
+                    if alt_to_del:
+                        del(alerts[alt_to_del])
+                    del(alerts[last_timestamp])
         # Create new record
         alerts[alt_timestamp] = w3cstats.Alerts(curr_time, alt_time)
     for section in sections:
         alerts[alt_timestamp].add_section(sections[section])
+    logger.info(alerts)
 
 
 if __name__ == '__main__':
@@ -90,16 +114,14 @@ if __name__ == '__main__':
                 logger.info("Period: {} > {} = {}".format(log_parsed['time_period'], start_time, log_parsed['time_period'] > start_time))
                 if log_parsed['time_period'] > start_time:
                     # Use the metrics
-                    display_summary(sections, start_time)
                     update_alerts(alerts, sections, start_time)
+                    display_summary(sections, start_time)
                     # Start a new period
                     start_time = log_parsed['time_period']
                     logger.debug("Clean history")
                     sections = {}
                 w3cstats.register_log(sections, log_parsed)
                 logger.debug(" -- End Read ---")
-
-
         except FileNotFoundError as error:
             logger.critical(error)
             exit(1)
