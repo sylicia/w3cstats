@@ -23,6 +23,9 @@ import w3cstats
 LOG_LEVEL = 'WARNING'
 TOP_STATS = 10
 
+WATCH_DURATION = 10
+ALERT_DURATION = 2
+
 logger = logging.getLogger(__name__)
 logger.setLevel(getattr(logging, LOG_LEVEL))
 logging.basicConfig(format='[%(name)s %(levelname)s] %(message)s')
@@ -30,7 +33,7 @@ w3cstats.logger.setLevel(getattr(logging, LOG_LEVEL))
 
 
 def get_ranking(sections, metric):
-    """Give the ranking of sections
+    """Give the ranking of sections on a metric
 
     :param dict sections: Sections list
     :param str metric: Name of the metric to calculate the ranking
@@ -57,7 +60,7 @@ def sum_metric(sections, metric):
 
 
 def display_summary(sections, date_time):
-    """Display the global summary for a period
+    """Display the global summary of a period
 
     :param dict sections: Sections list
     :param datetime date_time: Start time of the period
@@ -97,6 +100,24 @@ def display_summary(sections, date_time):
     print('------------------------------------')
 
 
+def clear_alert(alerts, last_tstp):
+    """Clear previous active alert
+
+    :param dict alerts: Alerts information
+    :param int last_tstp: Timestamp of the last alert
+    """
+    logger.info("Find active alert")
+    for alt in alerts:
+        if alerts[alt].in_alert:
+            print("CLEAR - Alert triggered at {} (now {:.0f} hits/s)".format(
+                alerts[alt].date_time,
+                alerts[last_tstp].average
+            ))
+            alt_to_del = alt
+            break
+    if alt_to_del:
+        del(alerts[alt_to_del])
+
 def update_alerts(alerts, sections, curr_time, alert_number):
     """Update alerts:
         - Create/Update/Close a period
@@ -104,10 +125,12 @@ def update_alerts(alerts, sections, curr_time, alert_number):
           the alert number
         - Clear previous alert when the traffic is under the alert number
 
-    :param dict sections: Sections list
-    :param datetime date_time: Start time of the period
+    :param dict alerts: Alerts information
+    :param dict sections: Sections information
+    :param datetime curr_time: Current watch time
+    :param int alert_number: Threatold not to exceed
     """
-    alt_time = w3cstats.to_period_alert(curr_time)
+    alt_time = w3cstats.to_alert_period(curr_time, ALERT_DURATION)
     alt_tstp = alt_time.timestamp()
     in_alert = False
     alt_to_del = None
@@ -120,19 +143,10 @@ def update_alerts(alerts, sections, curr_time, alert_number):
             if last_tstp < alt_tstp:
                 in_alert = alerts[last_tstp].close(alert_number, curr_time)
                 if not in_alert:
-                    logger.info("Find last alert")
-                    for alt in alerts:
-                        if alerts[alt].in_alert:
-                            print("Clear alert raised at {}".format(
-                                alerts[alt].date_time
-                            ))
-                            alt_to_del = alt
-                            break
-                    if alt_to_del:
-                        del(alerts[alt_to_del])
+                    clear_alert(alerts, last_tstp)
                     del(alerts[last_tstp])
         # Create new record
-        alerts[alt_tstp] = w3cstats.Alerts(curr_time, alt_time)
+        alerts[alt_tstp] = w3cstats.Alerts(curr_time, alt_time, ALERT_DURATION)
     for section in sections:
         alerts[alt_tstp].add_section(sections[section])
     logger.info(alerts)
@@ -153,7 +167,7 @@ if __name__ == '__main__':
         try:
             for log_line in Pygtail(log_file):
                 logger.debug("--- Start Read ---")
-                log_parsed = w3cstats.parse_log(log_line)
+                log_parsed = w3cstats.parse_log(log_line, WATCH_DURATION)
                 if not log_parsed:
                     continue
                 if not start_time:

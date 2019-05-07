@@ -1,9 +1,9 @@
 #
-#    Application dependencies management (pydeps)
+#    Stats and alert management (w3cstats)
 #
 #    Copyright (C) 2017 Cyrielle Camanes (sylicia) <cyrielle.camanes@gmail.com>
 #
-#    This file is part of pydeps
+#    This file is part of w3cstats
 #
 #    This program is free software; you can redistribute it and/or
 #    modify it under the terms of the GNU General Public License
@@ -12,7 +12,7 @@
 #
 #    This program is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
@@ -44,42 +44,56 @@ W3C_TIME_FORMAT = "%d/%b/%Y:%H:%M:%S %z"
 #
 #   Functions
 #
-def to_period_stats(time_string):
+def to_watch_period(time_string, duration=10):
     """Convert a date into a timestamp related a period.
-    Periods are defined every 10 seconds from 0.
+    Periods are defined every number of seconds from 0.
 
     :param str time_string: Time in W3C format
+    :param int duration: Duration of a period
+
     :return: The related period as datetime
     """
     date_time = datetime.strptime(time_string, W3C_TIME_FORMAT)
-    to_sub = int(str(int(date_time.timestamp()))[-1])
-    return (date_time - timedelta(seconds=to_sub))
+    modulo = date_time.second % duration
+    period_time = date_time + timedelta(seconds=duration - modulo)
+    logger.info("Watch - Original time {} - Period time: {}".format(
+                date_time,
+                period_time)
+    )
+    return (period_time)
 
 
-def to_period_alert(time_string):
-    """Convert a date into a timestamp related a period.
-    Periods are defined every 10 seconds from 0.
+def to_alert_period(orig_time, duration=2):
+    """Generate the alerting period from the watch period.
+    Periods are defined every number of minutes from 0.
 
-    :param str time_string: Time in W3C format
+    :param str orig_time: Time in W3C format
     :return: The related period as datetime
     """
     sec_to_sub = 0
-    min_to_sub = 0
+    min_to_add = 0
 
-    if time_string.second != 0:
-        sec_to_sub = time_string.second
-    if time_string.minute % 2 != 0:
-        min_to_sub = 1
+    if orig_time.second != 0:
+        sec_to_sub = orig_time.second
+    if orig_time.minute % duration == 0:
+        min_to_add = duration
+    else:
+        min_to_add = duration - orig_time.minute % duration
 
-    date_time = time_string - timedelta(minutes=min_to_sub, seconds=sec_to_sub)
-    logger.info("Period for alerting: {}".format(date_time))
+    date_time = orig_time + timedelta(minutes=min_to_add) \
+                          - timedelta(seconds=sec_to_sub)
+    logger.debug("Alert - Original time {} - Period time: {}".format(
+                orig_time,
+                date_time)
+    )
     return(date_time)
 
 
-def parse_log(log_line):
+def parse_log(log_line, watch_duration):
     """Parse a log line and extract interesting sections
 
     :param str log_line: W3C line to parse
+    :param int watch_duration: Watch duration in seconds
     :return: Dict with useful fields
     """
     logger.debug("Line: {}".format(log_line[0:-1]))
@@ -93,7 +107,7 @@ def parse_log(log_line):
             'section': match.group('section'),
             'status': int(match.group('status')),
             'size': float(match.group('size')),
-            'time_period': to_period_stats(match.group('time'))
+            'time_period': to_watch_period(match.group('time'), watch_duration)
     }
     logger.debug(result)
     return (result)
@@ -122,9 +136,9 @@ class Alerts(object):
 
     :param str section: Section URI
     """
-    def __init__(self, start_time, date_time):
+    def __init__(self, start_time, date_time, watch_duration):
         """Init method"""
-        self.start_time = start_time
+        self.start_time = start_time - timedelta(seconds=watch_duration)
         self.date_time = date_time
         self.end_time = None
         self.duration = None
@@ -152,7 +166,7 @@ class Alerts(object):
         self.average = self.hits/self.duration
         if self.average > limit:
             print(
-                "ALERT high traffic average at {} ({:.0f} hits/s)".format(
+                "ALERT - High traffic generated at {} ({:.0f} hits/s)".format(
                     self.date_time,
                     self.average
                 )
