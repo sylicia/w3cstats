@@ -11,6 +11,7 @@ Available scripts are in [scripts](./scripts) directory
 
 ## Script: read-file
 
+```bash
 Usage:
     read-file -h | --help
     read-file [-s <threshold>] [-l <log_file>]
@@ -22,3 +23,4 @@ Options:
                                                 [Default: 10]
     -l <log_file>, --logfile <log_file>         Logfile to read
                                                 [Default: /tmp/access.log]
+```
