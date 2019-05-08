@@ -19,10 +19,8 @@
 #    along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import os
 import re
 from datetime import datetime, timedelta
-from .exceptions import DependencyError
 
 logger = logging.getLogger(__name__)
 
@@ -175,9 +173,9 @@ class Alerts(object):
         self.average = self.hits/self.duration
         if self.average > threshold:
             print(
-                "ALERT - High traffic generated at {} ({:.0f} hits/s)".format(
-                    self.date_time,
-                    self.average
+                "High traffic generated an alert - hits = {:.0f}, triggered at {}".format(
+                    self.average,
+                    self.date_time
                 )
             )
             self.in_alert = True

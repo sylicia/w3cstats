@@ -17,7 +17,7 @@ Options:
 
 from pygtail import Pygtail
 import logging
-import sys
+import os
 import time
 import w3cstats
 
@@ -56,7 +56,7 @@ def sum_metric(sections, metric):
     """
     result = 0
     for section in sections:
-        result = getattr(sections[section], metric)
+        result += getattr(sections[section], metric)
     return(result)
 
 
@@ -94,7 +94,7 @@ def display_summary(sections, date_time):
         print("| Top errors")
         for (section, err_perc) in ranking:
             if err_perc > 0:
-                print("|   - {} : {:.2f}%".format(key, err_perc))
+                print("|   - {} : {:.2f}%".format(section, err_perc))
             hits_cpt += 1
             if hits_cpt == TOP_STATS:
                 break
@@ -108,11 +108,13 @@ def clear_alert(alerts, last_tstp):
     :param int last_tstp: Timestamp of the last alert
     """
     logger.info("Find active alert")
+    alt_to_del = None
     for alt in alerts:
         if alerts[alt].in_alert:
-            print("CLEAR - Alert triggered at {} (now {:.0f} hits/s)".format(
+            print("Clear alert triggered at {} - hits = {:.0f}, recovered at {}".format(
                 alerts[alt].date_time,
-                alerts[last_tstp].average
+                alerts[last_tstp].average,
+                alerts[last_tstp].date_time
             ))
             alt_to_del = alt
             break
@@ -165,31 +167,34 @@ if __name__ == '__main__':
     start_time = None
     sections = {}
     alerts = {}
+
     while True:
-        try:
-            for log_line in Pygtail(log_file):
-                logger.debug("--- Start Read ---")
-                log_parsed = w3cstats.parse_log(log_line, WATCH_DURATION)
-                if not log_parsed:
-                    continue
-                if not start_time:
-                    start_time = log_parsed['time_period']
-                logger.info("Period: {} > {} = {}".format(
-                    log_parsed['time_period'],
-                    start_time,
-                    log_parsed['time_period'] > start_time
-                ))
-                if log_parsed['time_period'] > start_time:
-                    # Use the metrics
-                    update_alerts(alerts, sections, start_time, threshold)
-                    display_summary(sections, start_time)
-                    # Start a new period
-                    start_time = log_parsed['time_period']
-                    logger.debug("Clean history")
-                    sections = {}
-                w3cstats.register_log(sections, log_parsed)
-                logger.debug(" -- End Read ---")
-        except FileNotFoundError as error:
-            logger.critical(error)
-            exit(1)
+        # Check if file exists
+        if not os.path.isfile(log_file):
+            logger.warning("{} not found, wait".format(log_file))
+            time.sleep(1)
+            continue
+
+        for log_line in Pygtail(log_file):
+            logger.debug("--- Start Read ---")
+            log_parsed = w3cstats.parse_log(log_line, WATCH_DURATION)
+            if not log_parsed:
+                continue
+            if not start_time:
+                start_time = log_parsed['time_period']
+            logger.info("Period: {} > {} = {}".format(
+                log_parsed['time_period'],
+                start_time,
+                log_parsed['time_period'] > start_time
+            ))
+            if log_parsed['time_period'] > start_time:
+                # Use the metrics
+                update_alerts(alerts, sections, start_time, threshold)
+                display_summary(sections, start_time)
+                # Start a new period
+                start_time = log_parsed['time_period']
+                logger.debug("Clean history")
+                sections = {}
+            w3cstats.register_log(sections, log_parsed)
+            logger.debug(" -- End Read ---")
         time.sleep(1)

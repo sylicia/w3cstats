@@ -10,8 +10,8 @@ function write_log(){
 
 function gen_lines() {
   csv_file="${1}"              # Source file to generate the log lines
-  interval_line="${2:-1}"       # delay between lines
-  times="${3:-30}"             # times to run
+  interval_line="${2:-1}"      # Delay between lines
+  times="${3:-15}"             # times to run
   interval_read="${4:-0}"      # interval between file reads in seconds
   # default set to have a flat traffic during 1 minute
 
@@ -54,12 +54,12 @@ gen_lines "$(dirname $0)/valid-logs.csv"
 
 
 echo "$(date) - High traffic"
-gen_lines "$(dirname $0)/valid-logs.csv" 0 140 1
+gen_lines "$(dirname $0)/valid-logs.csv" 0 120 1
 # Should obtain this:
 # High traffic generated an alert - hits = 10, triggered at 2019-05-08 17:26:00+02:00
 
 echo "$(date) - Traffic under threshold"
-gen_lines "$(dirname $0)/valid-logs.csv" 1 60
+gen_lines "$(dirname $0)/valid-logs.csv" 1 30
 # Should obtain this:
 # Clear alert triggered at 2019-05-08 17:26:00+02:00 - hits = 1, recovered at 2019-05-08 17:28:00+02:00
 
