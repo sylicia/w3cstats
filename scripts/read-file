@@ -4,11 +4,11 @@
 
 Usage:
     read-file -h | --help
-    read-file [-s <threshold>] [-l <log_file>]
+    read-file [-t <threshold>] [-l <log_file>]
 
 Options:
     -h, --help                                  Show this screen.
-    -s <threshold>, --threshold <threshold>     Raise an alert when traffic
+    -t <threshold>, --threshold <threshold>     Raise an alert when traffic
                                                 exceeds the threshold
                                                 [Default: 10]
     -l <log_file>, --logfile <log_file>         Logfile to read
@@ -134,8 +134,8 @@ def update_alerts(alerts, sections, curr_time, threshold):
     :param datetime curr_time: Current watch time
     :param int threshold: Threshold not to exceed
     """
-    alt_time = w3cstats.to_alert_period(curr_time, ALERT_DURATION)
-    alt_tstp = alt_time.timestamp()
+    alt_end_time = w3cstats.get_alert_end_date(curr_time, ALERT_DURATION)
+    alt_tstp = alt_end_time.timestamp()
     in_alert = False
     alt_to_del = None
 
@@ -150,7 +150,7 @@ def update_alerts(alerts, sections, curr_time, threshold):
                     clear_alert(alerts, last_tstp)
                     del(alerts[last_tstp])
         # Create new record
-        alerts[alt_tstp] = w3cstats.Alerts(curr_time, alt_time, ALERT_DURATION)
+        alerts[alt_tstp] = w3cstats.Alert(curr_time, alt_end_time, ALERT_DURATION)
     for section in sections:
         alerts[alt_tstp].add_section(sections[section])
     logger.info(alerts)
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     threshold = int(arguments['--threshold'])
     log_file = arguments['--logfile']
 
-    start_time = None
+    watch_end_time = None
     sections = {}
     alerts = {}
 
@@ -180,19 +180,19 @@ if __name__ == '__main__':
             log_parsed = w3cstats.parse_log(log_line, WATCH_DURATION)
             if not log_parsed:
                 continue
-            if not start_time:
-                start_time = log_parsed['time_period']
+            if not watch_end_time:
+                watch_end_time = log_parsed['watch_end_time']
             logger.info("Period: {} > {} = {}".format(
-                log_parsed['time_period'],
-                start_time,
-                log_parsed['time_period'] > start_time
+                log_parsed['watch_end_time'],
+                watch_end_time,
+                log_parsed['watch_end_time'] > watch_end_time
             ))
-            if log_parsed['time_period'] > start_time:
+            if log_parsed['watch_end_time'] > watch_end_time:
                 # Use the metrics
-                update_alerts(alerts, sections, start_time, threshold)
-                display_summary(sections, start_time)
+                update_alerts(alerts, sections, watch_end_time, threshold)
+                display_summary(sections, watch_end_time)
                 # Start a new period
-                start_time = log_parsed['time_period']
+                watch_end_time = log_parsed['watch_end_time']
                 logger.debug("Clean history")
                 sections = {}
             w3cstats.register_log(sections, log_parsed)

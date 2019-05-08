@@ -42,60 +42,61 @@ W3C_TIME_FORMAT = "%d/%b/%Y:%H:%M:%S %z"
 #
 #   Functions
 #
-def to_watch_period(time_string, duration=10):
-    """Convert a date into a timestamp related a period.
-    Periods are defined every number of seconds from 0.
+def get_watch_end_date(time_string, duration=10):
+    """Calculate end date of the watch period
+
+    Periods are designed to be a modulo 0 of 60 seconds.
 
     :param str time_string: Time in W3C format
     :param int duration: Duration of a period
-
-    :return: The related period as datetime
+    :return: End of the period as datetime
     """
     date_time = datetime.strptime(time_string, W3C_TIME_FORMAT)
     modulo = date_time.second % duration
-    period_time = date_time + timedelta(seconds=duration - modulo)
+    end_time = date_time + timedelta(seconds=duration - modulo)
     logger.info(
-        "Watch - Original time {} - Period time: {}".format(
+        "Watch - Original time: {} - Period time: {}".format(
             date_time,
-            period_time
+            end_time
         )
     )
-    return (period_time)
+    return (end_time)
 
 
-def to_alert_period(orig_time, duration=2):
-    """Generate the alerting period from the watch period.
-    Periods are defined every number of minutes from 0.
+def get_alert_end_date(watch_time, duration=2):
+    """Calculate end date of the alert period
 
-    :param str orig_time: Time in W3C format
-    :return: The related period as datetime
+    Periods are designed to be a modulo 0 of 60 minutes.
+
+    :param datetime watch_time: Time of the watch period
+    :return: End of the period as datetime
     """
     sec_to_sub = 0
     min_to_add = 0
 
-    if orig_time.second != 0:
-        sec_to_sub = orig_time.second
-    if orig_time.minute % duration == 0:
+    if watch_time.second != 0:
+        sec_to_sub = watch_time.second
+    if watch_time.minute % duration == 0:
         min_to_add = duration
     else:
-        min_to_add = duration - orig_time.minute % duration
+        min_to_add = duration - watch_time.minute % duration
 
-    date_time = orig_time \
+    end_time = watch_time \
         + timedelta(minutes=min_to_add) \
         - timedelta(seconds=sec_to_sub)
-    logger.debug("Alert - Original time {} - Period time: {}".format(
-                orig_time,
-                date_time)
+    logger.debug("Alert - Original: time {} - Period time: {}".format(
+                watch_time,
+                end_time)
     )
-    return(date_time)
+    return(end_time)
 
 
-def parse_log(log_line, watch_duration):
+def parse_log(log_line, watch_duration=10):
     """Parse a log line and extract interesting sections
 
-    :param str log_line: W3C line to parse
+    :param str log_line: W3C formated log line
     :param int watch_duration: Watch duration in seconds
-    :return: Dict with useful fields
+    :return: Log fields as :class:`dict`
     """
     logger.debug("Line: {}".format(log_line[0:-1]))
     match = parser.search(log_line)
@@ -108,7 +109,10 @@ def parse_log(log_line, watch_duration):
             'section': match.group('section'),
             'status': int(match.group('status')),
             'size': float(match.group('size')),
-            'time_period': to_watch_period(match.group('time'), watch_duration)
+            'watch_end_time': get_watch_end_date(
+                match.group('time'),
+                watch_duration
+            )
     }
     logger.debug(result)
     return (result)
@@ -132,7 +136,7 @@ def register_log(sections, log_parsed):
 #
 #   Class
 #
-class Alerts(object):
+class Alert(object):
     """Statistics based on logs and alerting
 
     :param str section: Section URI
@@ -158,7 +162,7 @@ class Alerts(object):
             self.sections[section.uri] = section.hits
         else:
             self.sections[section.uri] += section.hits
-        logger.debug("Update alert {} : {}".format(self.date_time, self.hits))
+        logger.debug("Update alert {}: {}".format(self.end_time, self.hits))
 
     def close(self, threshold, curr_time):
         """Close the period
@@ -167,30 +171,30 @@ class Alerts(object):
         :param datetime curr_time: Time when the period is closed to calculate
                                    the effective duration
         """
-        logger.info("Close period: {}".format(self.date_time))
+        logger.info("Close period: {}".format(self.end_time))
         self.end_time = curr_time
-        self.duration = (self.end_time-self.start_time).total_seconds()
-        self.average = self.hits/self.duration
+        self.duration = (self.end_time - self.start_time).total_seconds()
+        self.average = self.hits / self.duration
         if self.average > threshold:
             print(
                 "High traffic generated an alert - hits = {:.0f}, triggered at {}".format(
                     self.average,
-                    self.date_time
+                    self.end_time
                 )
             )
             self.in_alert = True
         else:
             logger.info(
                 "No alert on traffic average at {} ({:.0f} hits/s)".format(
-                    self.date_time,
+                    self.end_time,
                     self.average
                 )
             )
-        return(self.in_alert)
+        return self.in_alert
 
 
 class LogStat(object):
-    """Statistics based on logs for 10 seconds
+    """Log statistics for watch period
 
     :param str section: Section URI
     """
@@ -205,11 +209,11 @@ class LogStat(object):
         self.max_size = 0
 
     def __str__(self):
-        return("""{}: {} hits
+        return """{}: {} hits
   - total size: {}
   - total hits: {}\n  - hosts: {}
   - status: {}""".format(self.uri, self.hits, self.size,
-                         self.hits, self.host, self. status))
+                         self.hits, self.host, self. status)
 
     def add_hit(self, host, status, size):
         """Add a hit to statitics
@@ -247,4 +251,4 @@ class LogStat(object):
         for status in self.status:
             if status >= 400:
                 count_errors += self.status[status]
-        return(count_errors * 100 / self.hits)
+        return count_errors * 100 / self.hits
