@@ -7,4 +7,4 @@ services:
     command: /sup/scripts/read-file -l /tmp/tests/access.log -s 10
     tty: yes
     volumes:
-        - /home/ccamanes/github/w3cstats/tests:/tmp/tests
+        - ./tests:/tmp/tests
