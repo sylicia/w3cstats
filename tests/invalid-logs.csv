@@ -1,0 +1,7 @@
+127.0.0.1 - localhost,"GET / HTTP/1.0" 200 123
+
+127.0.0.1 - localhost,"POST /api/user HTTP/1.0" 200 123
+# this is not valid
+127.0.0.1  - localhost,"GET /api HTTP/1.0" 200 12
+
+127.0.0.1 - localhost,"GET /login HTTP/1.0"
