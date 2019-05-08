@@ -12,4 +12,4 @@ COPY scripts ./scripts
 COPY w3cstats ./w3cstats
 ENV PYTHONPATH /sup
 
-CMD [ "/sup/scripts/read-file" ]
+CMD [ "/sup/scripts/watch-log" ]

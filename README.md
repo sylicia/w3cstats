@@ -9,14 +9,14 @@ under the threshold during 2 minutes.
 
 Available scripts are in [scripts](./scripts) directory
 
-## Script: read-file
+## Script: watch-log
 
 ### Howto
 
 ```bash
 Usage:
-    read-file -h | --help
-    read-file [-s <threshold>] [-l <log_file>]
+    watch-log -h | --help
+    watch-log [-s <threshold>] [-l <log_file>]
 
 Options:
     -h, --help                                  Show this screen.
