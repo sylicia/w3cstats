@@ -4,11 +4,12 @@
 
 Usage:
     read-file -h | --help
-    read-file [-a <alert_level>] [-l <log_file>]
+    read-file [-s <threshold>] [-l <log_file>]
 
 Options:
     -h, --help                                  Show this screen.
-    -a <alert_level>, --alert <alert_level>     Raise an alert when traffic
+    -s <threshold>, --threshold <threshold>     Raise an alert when traffic
+                                                exceeds the threshold
                                                 [Default: 10]
     -l <log_file>, --logfile <log_file>         Logfile to read
                                                 [Default: /tmp/access.log]
@@ -118,7 +119,8 @@ def clear_alert(alerts, last_tstp):
     if alt_to_del:
         del(alerts[alt_to_del])
 
-def update_alerts(alerts, sections, curr_time, alert_number):
+
+def update_alerts(alerts, sections, curr_time, threshold):
     """Update alerts:
         - Create/Update/Close a period
         - Raise an alert for a closed period if the traffic exceeds
@@ -128,7 +130,7 @@ def update_alerts(alerts, sections, curr_time, alert_number):
     :param dict alerts: Alerts information
     :param dict sections: Sections information
     :param datetime curr_time: Current watch time
-    :param int alert_number: Threatold not to exceed
+    :param int threshold: Threshold not to exceed
     """
     alt_time = w3cstats.to_alert_period(curr_time, ALERT_DURATION)
     alt_tstp = alt_time.timestamp()
@@ -141,7 +143,7 @@ def update_alerts(alerts, sections, curr_time, alert_number):
         if len(alerts.keys()) >= 1:
             last_tstp = sorted(sorted_dates)[-1]
             if last_tstp < alt_tstp:
-                in_alert = alerts[last_tstp].close(alert_number, curr_time)
+                in_alert = alerts[last_tstp].close(threshold, curr_time)
                 if not in_alert:
                     clear_alert(alerts, last_tstp)
                     del(alerts[last_tstp])
@@ -157,7 +159,7 @@ if __name__ == '__main__':
     from docopt import docopt
 
     arguments = docopt(__doc__)
-    alert_number = int(arguments['--alert'])
+    threshold = int(arguments['--threshold'])
     log_file = arguments['--logfile']
 
     start_time = None
@@ -179,7 +181,7 @@ if __name__ == '__main__':
                 ))
                 if log_parsed['time_period'] > start_time:
                     # Use the metrics
-                    update_alerts(alerts, sections, start_time, alert_number)
+                    update_alerts(alerts, sections, start_time, threshold)
                     display_summary(sections, start_time)
                     # Start a new period
                     start_time = log_parsed['time_period']

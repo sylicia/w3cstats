@@ -56,9 +56,11 @@ def to_watch_period(time_string, duration=10):
     date_time = datetime.strptime(time_string, W3C_TIME_FORMAT)
     modulo = date_time.second % duration
     period_time = date_time + timedelta(seconds=duration - modulo)
-    logger.info("Watch - Original time {} - Period time: {}".format(
-                date_time,
-                period_time)
+    logger.info(
+        "Watch - Original time {} - Period time: {}".format(
+            date_time,
+            period_time
+        )
     )
     return (period_time)
 
@@ -80,8 +82,9 @@ def to_alert_period(orig_time, duration=2):
     else:
         min_to_add = duration - orig_time.minute % duration
 
-    date_time = orig_time + timedelta(minutes=min_to_add) \
-                          - timedelta(seconds=sec_to_sub)
+    date_time = orig_time \
+        + timedelta(minutes=min_to_add) \
+        - timedelta(seconds=sec_to_sub)
     logger.debug("Alert - Original time {} - Period time: {}".format(
                 orig_time,
                 date_time)
@@ -159,12 +162,18 @@ class Alerts(object):
             self.sections[section.uri] += section.hits
         logger.debug("Update alert {} : {}".format(self.date_time, self.hits))
 
-    def close(self, limit, curr_time):
+    def close(self, threshold, curr_time):
+        """Close the period
+
+        :param threshold threshold: Theshold for the hits
+        :param datetime curr_time: Time when the period is closed to calculate
+                                   the effective duration
+        """
         logger.info("Close period: {}".format(self.date_time))
         self.end_time = curr_time
         self.duration = (self.end_time-self.start_time).total_seconds()
         self.average = self.hits/self.duration
-        if self.average > limit:
+        if self.average > threshold:
             print(
                 "ALERT - High traffic generated at {} ({:.0f} hits/s)".format(
                     self.date_time,

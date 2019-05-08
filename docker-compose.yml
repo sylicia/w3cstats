@@ -4,7 +4,7 @@ services:
   w3cstats:
     image: w3cstats:latest
     build: .
-    command: /sup/scripts/read-file -l /tmp/tests/access.log -a 10
+    command: /sup/scripts/read-file -l /tmp/tests/access.log -s 10
     tty: yes
     volumes:
         - /home/ccamanes/github/w3cstats/tests:/tmp/tests
