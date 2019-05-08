@@ -60,7 +60,7 @@ def get_watch_end_date(time_string, duration=10):
             end_time
         )
     )
-    return (end_time)
+    return end_time
 
 
 def get_alert_end_date(watch_time, duration=2):
@@ -88,7 +88,7 @@ def get_alert_end_date(watch_time, duration=2):
                 watch_time,
                 end_time)
     )
-    return(end_time)
+    return end_time
 
 
 def parse_log(log_line, watch_duration=10):
@@ -103,19 +103,24 @@ def parse_log(log_line, watch_duration=10):
     if not match:
         if len(log_line) > 0:
             logger.warning("Invalid Line: {}".format(log_line[0:-1]))
-            return(None)
+            return None
+    try:
+        watch_end_time = get_watch_end_date(
+            match.group('time'),
+            watch_duration
+        )
+    except:
+        logger.warning("Invalid Line: {}".format(log_line[0:-1]))
+        return None
     result = {
             'host': match.group('host'),
             'section': match.group('section'),
             'status': int(match.group('status')),
             'size': float(match.group('size')),
-            'watch_end_time': get_watch_end_date(
-                match.group('time'),
-                watch_duration
-            )
+            'watch_end_time': watch_end_time
     }
     logger.debug(result)
-    return (result)
+    return result
 
 
 def register_log(sections, log_parsed):
